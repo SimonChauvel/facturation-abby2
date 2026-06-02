@@ -5,7 +5,7 @@ compatibility_date = "2026-01-01"
 # ─── KV NAMESPACE (stockage temporaire des commandes) ─────────────────────────
 [[kv_namespaces]]
 binding = "ORDERS"
-id = "REMPLACER_PAR_TON_KV_ID"
+id = "5598e401dc1f4e70a882286de3899b3c"
 
 # ─── QUEUE (timer de délai entre webhooks) ────────────────────────────────────
 [[queues.producers]]
