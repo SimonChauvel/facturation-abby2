@@ -1,0 +1,23 @@
+name = "webhook-abby"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# ─── KV NAMESPACE (stockage temporaire des commandes) ─────────────────────────
+[[kv_namespaces]]
+binding = "ORDERS"
+id = "REMPLACER_PAR_TON_KV_ID"
+
+# ─── QUEUE (timer de délai entre webhooks) ────────────────────────────────────
+[[queues.producers]]
+binding = "ORDER_QUEUE"
+queue = "webhook-orders"
+
+[[queues.consumers]]
+queue = "webhook-orders"
+max_batch_size = 10
+max_batch_timeout = 5
+
+# ─── VARIABLES D'ENVIRONNEMENT ────────────────────────────────────────────────
+# Ne pas mettre les secrets ici — utilise : wrangler secret put ABBY_API_KEY
+[vars]
+DELAY_SECONDS = "60"
