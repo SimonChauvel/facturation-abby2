@@ -63,7 +63,6 @@ async function abbyPatch(apiKey, path, body) {
 }
 
 // ─── API SIRET (data.gouv.fr) ─────────────────────────────────────────────────
-
 async function getSiretFromVat(vatNumber) {
   if (!vatNumber) return null;
   const vat = vatNumber.trim().toUpperCase();
@@ -72,7 +71,7 @@ async function getSiretFromVat(vatNumber) {
     return null;
   }
 
-  const siren = vat.slice(4); // retire "FR" + 2 chiffres de clé TVA
+  const siren = vat.slice(4);
 
   try {
     const r = await fetch(
@@ -85,9 +84,17 @@ async function getSiretFromVat(vatNumber) {
     const data = await r.json();
     const results = data.results || [];
     if (!results.length) return null;
-    const siret = results[0]?.siege?.siret || null;
+
+    const siege = results[0]?.siege || {};
+    const siret = siege.siret || null;
+    const adresse = siege.geo_adresse || null;
+    const codePostal = siege.code_postal || null;
+    const ville = siege.libelle_commune || null;
+
     if (siret) log("INFO", `SIRET récupéré : ${siret}`);
-    return siret;
+    if (adresse) log("INFO", `Adresse récupérée : ${adresse}`);
+
+    return { siret, adresse, codePostal, ville };
   } catch (e) {
     log("ERROR", `Erreur API data.gouv pour SIREN ${siren} :`, e.message);
     return null;
@@ -128,7 +135,12 @@ async function createOrganization(apiKey, customer) {
   const email = customer.email || "";
   const vatNumber = fields.tax_number || "";
 
-  const siret = await getSiretFromVat(vatNumber);
+  const infosEntreprise = await getSiretFromVat(vatNumber);
+  const siret   = infosEntreprise?.siret || null;
+  const adresse = infosEntreprise?.adresse || fields.address || "";
+  const ville   = infosEntreprise?.ville || fields.city || "";
+  const cp      = infosEntreprise?.codePostal || fields.zip_code || fields.zipcode || "";
+  const country = (fields.country || "FR").toUpperCase().slice(0, 2);
 
   const body = {
     name: company,
@@ -137,13 +149,14 @@ async function createOrganization(apiKey, customer) {
   };
   if (siret) body.siret = siret;
 
-  const addressLine = fields.address || "";
-  const city = fields.city || "";
-  const zipCode = fields.zip_code || fields.zipcode || "";
-  const country = (fields.country || "FR").toUpperCase().slice(0, 2);
-
-  if (addressLine && city && zipCode) {
-    body.billingAddress = { address: addressLine, city, zipCode, country };
+  // Adresse : priorité aux données INSEE, sinon celles du client
+  if (adresse && ville && cp) {
+    body.billingAddress = {
+      address: adresse,
+      city:    ville,
+      zipCode: cp,
+      country: country,
+    };
   }
 
   log("INFO", `Création organisation : ${company} (SIRET: ${siret || "non disponible"})`);
