@@ -42,12 +42,13 @@ function getTaxZone(countryCode) {
  * - EU      → autoliquidation, Art. 44 directive 2006/112/CE  (FR_00HT)
  * - WORLD   → exonération TVA, Art. 262 CGI                   (FR_00HT)
  */
+
 function getVatConfig(taxZone) {
   switch (taxZone) {
     case "FR":
       return {
-        vatCode: "FR_20",
-        mention: null,          // TVA normale, pas de mention spéciale
+        vatCode: "FR_2000",   // ← était "FR_20", valeur incorrecte
+        mention: null,
       };
     case "EU":
       return {
@@ -343,7 +344,6 @@ async function createInvoiceWithLines(apiKey, customerId, items, taxZone) {
   // Lignes produits uniquement (types valides Abby)
   const lines = items.map((item) => ({
     designation:       item.name,
-    description:       item.description || "",
     quantity:          1,
     quantityUnit:      "unit",
     unitPrice:         Math.round(item.unit_price_eur * 100),
