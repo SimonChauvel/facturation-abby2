@@ -313,38 +313,32 @@ async function getOrCreateCustomer(apiKey, customer) {
 async function createInvoiceWithLines(apiKey, customerId, items, taxZone) {
   log("INFO", `Création facture brouillon pour customerId=${customerId} (zone: ${taxZone})…`);
 
-  const invoice = await abbyPost(apiKey, `/v2/billing/invoice/${customerId}`, {});
+  const { vatCode, mention } = getVatConfig(taxZone);
+
+  // La mention légale TVA va dans le champ "notes" de la facture (pas dans les lignes)
+  // car l'API Abby n'accepte pas de type "comment" sur les lignes.
+  const invoiceBody = {};
+  if (mention) {
+    invoiceBody.notes = mention;
+    log("INFO", `Mention TVA injectée dans notes : "${mention}"`);
+  }
+
+  const invoice = await abbyPost(apiKey, `/v2/billing/invoice/${customerId}`, invoiceBody);
   if (!invoice) return null;
 
   const billingId = invoice.id;
   log("INFO", `Facture créée : id=${billingId} — construction des lignes…`);
 
-  const { vatCode, mention } = getVatConfig(taxZone);
-
-  // Lignes produits
+  // Lignes produits uniquement (types valides Abby)
   const lines = items.map((item) => ({
-    designation:      item.name,
-    quantity:         1,
-    quantityUnit:     "unit",
-    unitPrice:        Math.round(item.unit_price_eur * 100),
-    type:             "sale_of_goods",
-    vatCode:          vatCode,
+    designation:       item.name,
+    quantity:          1,
+    quantityUnit:      "unit",
+    unitPrice:         Math.round(item.unit_price_eur * 100),
+    type:              "service_delivery",
+    vatCode:           vatCode,
     isDeliveryOfGoods: false,
   }));
-
-  // Ligne mention légale (si hors FR)
-  if (mention) {
-    lines.push({
-      designation: mention,
-      quantity:    1,
-      quantityUnit: "unit",
-      unitPrice:   0,
-      type:        "comment",   // ligne de texte / commentaire dans Abby
-      vatCode:     vatCode,
-      isDeliveryOfGoods: false,
-    });
-    log("INFO", `Mention TVA ajoutée : "${mention}"`);
-  }
 
   log("INFO", `Ajout de ${lines.length} ligne(s) à la facture id=${billingId}…`);
   const updated = await abbyPatch(apiKey, `/v2/billing/${billingId}/lines`, { lines });
