@@ -243,6 +243,7 @@ async function createOrganization(apiKey, customer) {
   }
 
   log("INFO", `Création organisation : ${company} (SIRET: ${siret || "N/A"}, zone: ${taxZone})`);
+  log("INFO", "Body envoyé à Abby : " + JSON.stringify(body));
   const result = await abbyPost(apiKey, "/organization", body);
   log("INFO", "Réponse Abby organisation : " + JSON.stringify(result));
 
