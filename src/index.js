@@ -346,7 +346,7 @@ async function createInvoiceWithLines(apiKey, customerId, items, taxZone) {
     quantity:          1,
     quantityUnit:      "unit",
     unitPrice:         Math.round(item.unit_price_eur * 100),
-    type:              "service_delivery",
+    type:              "sale_of_goods",
     vatCode:           vatCode,
     isDeliveryOfGoods: false,
   }));
