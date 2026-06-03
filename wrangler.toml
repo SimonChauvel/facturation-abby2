@@ -1,4 +1,4 @@
-name = "webhook-abby"
+name = "facturation-abby2"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 
