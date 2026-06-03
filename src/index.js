@@ -233,17 +233,23 @@ async function createOrganization(apiKey, customer) {
   };
   if (siret) body.siret = siret;
 
+
   if (adresse && ville && cp) {
-    body.billingAddress = {
-      address: adresse,
-      city:    ville,
-      zipCode: cp,
-      country: country,
-    };
-    log("INFO", `Adresse envoyée : ${adresse}, ${cp} ${ville} (${country})`);
-  } else {
-    log("INFO", `Adresse incomplète — adresse=${adresse} ville=${ville} cp=${cp}`);
-  }
+      body.billingAddress = {
+        address: adresse,
+        city:    ville,
+        zipCode: cp,
+        country: country,
+      };
+      log("INFO", `Adresse envoyée : ${adresse}, ${cp} ${ville} (${country})`);
+    } else {
+      log("INFO", `Adresse incomplète — adresse=${adresse} ville=${ville} cp=${cp}`);
+      if (taxZone !== "FR") {
+        // Pro étranger sans adresse complète → on envoie au moins le pays
+        body.billingAddress = { country: country };
+        log("INFO", `Pays seul envoyé dans billingAddress : ${country}`);
+      }
+    }
 
   log("INFO", `Création organisation : ${company} (SIRET: ${siret || "N/A"}, zone: ${taxZone})`);
   log("INFO", "Body envoyé à Abby : " + JSON.stringify(body));
