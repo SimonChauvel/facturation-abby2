@@ -160,6 +160,10 @@ async function createOrganization(apiKey, customer) {
   }
 
   log("INFO", `Création organisation : ${company} (SIRET: ${siret || "non disponible"})`);
+  log("INFO", "Body envoyé à Abby : " + JSON.stringify(body, null, 2));
+    const result = await abbyPost(apiKey, "/organization", body);
+  log("INFO", "Réponse Abby : " + JSON.stringify(result, null, 2));
+    return result;
   return abbyPost(apiKey, "/organization", body);
 }
 
