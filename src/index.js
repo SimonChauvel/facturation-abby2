@@ -230,7 +230,6 @@ async function createOrganization(apiKey, customer) {
     name:      company,
     emails:    email ? [email] : [],
     vatNumber: vatNumber,
-    country:   country,   // champ pays affiché dans la fiche client Abby
   };
   if (siret) body.siret = siret;
 
