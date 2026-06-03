@@ -21,3 +21,11 @@ max_batch_timeout = 5
 # Ne pas mettre les secrets ici — utilise : wrangler secret put ABBY_API_KEY
 [vars]
 DELAY_SECONDS = "60"
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+
