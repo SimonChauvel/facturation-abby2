@@ -344,6 +344,7 @@ async function createInvoiceWithLines(apiKey, customerId, items, taxZone) {
   // Lignes produits uniquement (types valides Abby)
   const lines = items.map((item) => ({
     designation:       item.name,
+    description:       item.inner_name || "",   // ← ligne à ajouter
     quantity:          1,
     quantityUnit:      "unit",
     unitPrice:         Math.round(item.unit_price_eur * 100),
@@ -410,7 +411,7 @@ function parseWebhook(payload) {
     const total = data.order?.total_price;
     if (total !== undefined && total !== null && total === 0) unitPrice = 0.0;
 
-    return { orderId, customer, item: { name, unit_price_eur: unitPrice } };
+    return { orderId, customer, item: { name, inner_name: offer.inner_name || "", unit_price_eur: unitPrice } };
   } catch (e) {
     log("ERROR", "Erreur parsing webhook :", e.message);
     return null;
