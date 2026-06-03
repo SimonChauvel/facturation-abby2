@@ -100,7 +100,7 @@ async function abbyPost(apiKey, path, body) {
   });
   if (r.ok) return r.json();
   const txt = await r.text();
-  log("ERROR", `POST ${path} → ${r.status}`, txt.slice(0, 300));
+  log("ERROR", `POST ${path} → ${r.status} | body envoyé : ${JSON.stringify(body)} | réponse : ${txt}`);
   return null;
 }
 
