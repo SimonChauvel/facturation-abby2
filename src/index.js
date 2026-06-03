@@ -98,9 +98,13 @@ async function abbyPost(apiKey, path, body) {
     headers: abbyHeaders(apiKey),
     body: JSON.stringify(body),
   });
-  if (r.ok) return r.json();
-  const txt = await r.text();
-  log("ERROR", `POST ${path} → ${r.status} | body envoyé : ${JSON.stringify(body)} | réponse : ${txt}`);
+  
+  const txt = await r.text(); // toujours lire le body
+  log("INFO", `POST ${path} → status=${r.status} ok=${r.ok} | réponse: ${txt.slice(0, 500)}`);
+  
+  if (r.ok) {
+    try { return JSON.parse(txt); } catch { return null; }
+  }
   return null;
 }
 
