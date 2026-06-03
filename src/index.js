@@ -87,11 +87,10 @@ async function getSiretFromVat(vatNumber) {
 
     const siege = results[0]?.siege || {};
     const siret = siege.siret || null;
-    const adresse    = siege.numero_voie
-      ? `${siege.numero_voie} ${siege.type_voie || ""} ${siege.libelle_voie || ""}`.trim()
-      : siege.geo_adresse || null;
+    const adresse = siege.geo_adresse || null;
     const codePostal = siege.code_postal || null;
-    const ville      = siege.libelle_commune || null;
+    const ville = siege.libelle_commune || null;
+
     if (siret) log("INFO", `SIRET récupéré : ${siret}`);
     if (adresse) log("INFO", `Adresse récupérée : ${adresse}`);
 
@@ -149,7 +148,7 @@ async function createOrganization(apiKey, customer) {
     vatNumber: vatNumber,
   };
   if (siret) body.siret = siret;
-  log("INFO", `Adresse dispo : adresse=${adresse} ville=${ville} cp=${cp}`);
+
   // Adresse : priorité aux données INSEE, sinon celles du client
   if (adresse && ville && cp) {
     body.billingAddress = {
@@ -161,10 +160,6 @@ async function createOrganization(apiKey, customer) {
   }
 
   log("INFO", `Création organisation : ${company} (SIRET: ${siret || "non disponible"})`);
-  log("INFO", "Body envoyé à Abby : " + JSON.stringify(body, null, 2));
-    const result = await abbyPost(apiKey, "/organization", body);
-  log("INFO", "Réponse Abby : " + JSON.stringify(result, null, 2));
-    return result;
   return abbyPost(apiKey, "/organization", body);
 }
 
