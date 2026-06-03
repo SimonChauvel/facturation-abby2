@@ -246,7 +246,7 @@ async function createOrganization(apiKey, customer) {
       log("INFO", `Adresse incomplète — adresse=${adresse} ville=${ville} cp=${cp}`);
       if (taxZone !== "FR") {
         // Pro étranger sans adresse complète → on envoie au moins le pays
-        body.billingAddress = { address: "", country: country };
+        body.billingAddress = {  address: "", city: "", zipCode: "", country: country };
         log("INFO", `Pays seul envoyé dans billingAddress : ${country}`);
       }
     }
