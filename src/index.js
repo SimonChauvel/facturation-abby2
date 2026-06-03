@@ -86,13 +86,18 @@ async function getSiretFromVat(vatNumber) {
     if (!results.length) return null;
 
     const siege = results[0]?.siege || {};
-    const siret = siege.siret || null;
-    const adresse = siege.geo_adresse || null;
+    const siret      = siege.siret || null;
     const codePostal = siege.code_postal || null;
-    const ville = siege.libelle_commune || null;
+    const ville      = siege.libelle_commune || null;
 
-    if (siret) log("INFO", `SIRET récupéré : ${siret}`);
-    if (adresse) log("INFO", `Adresse récupérée : ${adresse}`);
+    // Reconstruction de la ligne d'adresse depuis les champs détaillés
+    const numVoie    = siege.numero_voie || "";
+    const typeVoie   = siege.type_voie || "";
+    const libelleVoie = siege.libelle_voie || "";
+    const adresse    = [numVoie, typeVoie, libelleVoie].filter(Boolean).join(" ").trim()
+                       || siege.geo_adresse || null;
+
+    log("INFO", `SIRET: ${siret} | Adresse: ${adresse} | CP: ${codePostal} | Ville: ${ville}`);
 
     return { siret, adresse, codePostal, ville };
   } catch (e) {
@@ -128,28 +133,26 @@ async function findOrganizationByEmail(apiKey, email) {
 }
 
 async function createOrganization(apiKey, customer) {
-  const fields = customer.fields || {};
-  const company =
-    fields.company_name ||
+  const fields  = customer.fields || {};
+  const company = fields.company_name ||
     `${fields.first_name || ""} ${fields.surname || ""}`.trim();
-  const email = customer.email || "";
-  const vatNumber = fields.tax_number || "";
+  const email      = customer.email || "";
+  const vatNumber  = fields.tax_number || "";
 
-  const infosEntreprise = await getSiretFromVat(vatNumber);
-  const siret   = infosEntreprise?.siret || null;
-  const adresse = infosEntreprise?.adresse || fields.address || "";
-  const ville   = infosEntreprise?.ville || fields.city || "";
-  const cp      = infosEntreprise?.codePostal || fields.zip_code || fields.zipcode || "";
+  const infos  = await getSiretFromVat(vatNumber);
+  const siret  = infos?.siret || null;
+  const adresse = infos?.adresse || fields.address || "";
+  const ville   = infos?.ville   || fields.city    || "";
+  const cp      = infos?.codePostal || fields.zip_code || fields.zipcode || "";
   const country = (fields.country || "FR").toUpperCase().slice(0, 2);
 
   const body = {
-    name: company,
-    emails: email ? [email] : [],
-    vatNumber: vatNumber,
+    name:       company,
+    emails:     email ? [email] : [],
+    vatNumber:  vatNumber,
   };
   if (siret) body.siret = siret;
 
-  // Adresse : priorité aux données INSEE, sinon celles du client
   if (adresse && ville && cp) {
     body.billingAddress = {
       address: adresse,
@@ -157,10 +160,15 @@ async function createOrganization(apiKey, customer) {
       zipCode: cp,
       country: country,
     };
+    log("INFO", `Adresse envoyée : ${adresse}, ${cp} ${ville}`);
+  } else {
+    log("INFO", `Adresse incomplète — adresse=${adresse} ville=${ville} cp=${cp}`);
   }
 
   log("INFO", `Création organisation : ${company} (SIRET: ${siret || "non disponible"})`);
-  return abbyPost(apiKey, "/organization", body);
+  const result = await abbyPost(apiKey, "/organization", body);
+  log("INFO", "Réponse Abby : " + JSON.stringify(result));
+  return result;
 }
 
 async function getOrCreateCustomerId(apiKey, customer) {
