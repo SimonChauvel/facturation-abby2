@@ -343,6 +343,7 @@ async function createInvoiceWithLines(apiKey, customerId, items, taxZone) {
   // Lignes produits uniquement (types valides Abby)
   const lines = items.map((item) => ({
     designation:       item.name,
+    description:       item.description || "",
     quantity:          1,
     quantityUnit:      "unit",
     unitPrice:         Math.round(item.unit_price_eur * 100),
