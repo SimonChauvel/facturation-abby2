@@ -2,12 +2,12 @@ name = "facturation-abby2"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 
-# ─── KV NAMESPACE (stockage temporaire des commandes) ─────────────────────────
+# ─── KV NAMESPACE ─────────────────────────────────────────────────────────────
 [[kv_namespaces]]
 binding = "ORDERS"
 id = "5598e401dc1f4e70a882286de3899b3c"
 
-# ─── QUEUE (timer de délai entre webhooks) ────────────────────────────────────
+# ─── QUEUE ────────────────────────────────────────────────────────────────────
 [[queues.producers]]
 binding = "ORDER_QUEUE"
 queue = "webhook-orders"
@@ -18,14 +18,9 @@ max_batch_size = 10
 max_batch_timeout = 5
 
 # ─── VARIABLES D'ENVIRONNEMENT ────────────────────────────────────────────────
-# Ne pas mettre les secrets ici — utilise : wrangler secret put ABBY_API_KEY
 [vars]
 DELAY_SECONDS = "60"
 
-[observability.logs]
+# ─── OBSERVABILITY ────────────────────────────────────────────────────────────
+[observability]
 enabled = true
-invocation_logs = true
-
-[observability.traces]
-enabled = true
-
