@@ -361,28 +361,6 @@ async function createInvoiceWithLines(apiKey, customerId, items, taxZone) {
 
   return updated || invoice;
 }
-async function finalizeInvoice(apiKey, billingId) {
-  log("INFO", `Finalisation de la facture id=${billingId}…`);
-  const result = await abbyPost(apiKey, `/v2/billing/${billingId}/finalize`, {});
-  if (result) log("INFO", `✅ Facture id=${billingId} finalisée`);
-  else log("ERROR", `❌ Échec finalisation facture id=${billingId}`);
-  return result;
-}
-
-async function markInvoicePaid(apiKey, billingId, amountEur, paymentMethod) {
-  log("INFO", `Enregistrement paiement facture id=${billingId} — ${amountEur.toFixed(2)} € via ${paymentMethod}…`);
-
-  const body = {
-    amount:        Math.round(amountEur * 100), // en centimes
-    paymentMethod: paymentMethod,               // ex: "card", "transfer", "paypal"
-    paidAt:        new Date().toISOString(),
-  };
-
-  const result = await abbyPost(apiKey, `/v2/billing/${billingId}/payment`, body);
-  if (result) log("INFO", `✅ Paiement enregistré pour facture id=${billingId}`);
-  else log("ERROR", `❌ Échec enregistrement paiement facture id=${billingId}`);
-  return result;
-}
 
 // ─── TRAITEMENT COMMANDE (appelé par la Queue) ────────────────────────────────
 
@@ -406,50 +384,36 @@ async function processOrder(orderId, env) {
     return;
   }
 
-  // Après :
   const invoice = await createInvoiceWithLines(env.ABBY_API_KEY, customerId, items, taxZone);
-  if (!invoice) { log("ERROR", "❌ Échec création facture."); return; }
-  
-  log("INFO", `✅ Facture brouillon créée : id=${invoice.id}`);
-  
-  // Finalisation
-  const finalized = await finalizeInvoice(env.ABBY_API_KEY, invoice.id);
-  if (!finalized) { log("ERROR", "❌ Arrêt — facture non finalisée."); return; }
-  
-  // Calcul du montant total
-  const totalEur = items.reduce((sum, it) => sum + it.unit_price_eur, 0);
-  
-  // Moyen de paiement : à récupérer depuis orderData si systeme.io le fournit,
-  // sinon valeur par défaut
-  const paymentMethod = orderData.paymentMethod || "card";
-  
-  await markInvoicePaid(env.ABBY_API_KEY, invoice.id, totalEur, paymentMethod);
-  
-  // ─── PARSING WEBHOOK ──────────────────────────────────────────────────────────
-  function parseWebhook(payload) {
-  try {
-    const data     = payload.data || payload || {};
-    const order    = data.order || {};
-    const orderId  = String(order.id);
-    const customer = data.customer || {};
+  if (invoice) log("INFO", `✅ Facture brouillon finalisée : id=${invoice.id}`);
+  else log("ERROR", "❌ Échec création facture.");
+}
 
+// ─── PARSING WEBHOOK ──────────────────────────────────────────────────────────
+
+function parseWebhook(payload) {
+  try {
+    const data     = payload.data || {};
+    const orderId  = String(data.order.id);
+    const customer = data.customer;
+
+    // systeme.io expose le pays dans data.customer.country (code ISO-2)
+    // On s'assure qu'il est bien disponible sur l'objet customer
     if (!customer.country && data.customer?.billing_address?.country) {
       customer.country = data.customer.billing_address.country;
     }
 
-    const offer       = data.offer_price_plan || data.price_plan || {};
-    const name        = offer.name || "Produit";
+    const offer      = data.offer_price_plan || data.price_plan || {};
+    const name       = offer.name || "Produit";
     const amountCents = offer.direct_charge_amount || offer.amount || 0;
-    let unitPrice     = Math.round(amountCents) / 100;
+    let unitPrice    = Math.round(amountCents) / 100;
 
     const total = data.order?.total_price;
     if (total !== undefined && total !== null && total === 0) unitPrice = 0.0;
 
-    log("INFO", "Payload reçu : " + JSON.stringify(payload));  // ← log temporaire
     return { orderId, customer, item: { name, inner_name: offer.inner_name || "", unit_price_eur: unitPrice } };
   } catch (e) {
     log("ERROR", "Erreur parsing webhook :", e.message);
-    log("ERROR", "Payload complet : " + JSON.stringify(payload));
     return null;
   }
 }
@@ -512,6 +476,5 @@ export default {
     }
   },
 };
-  
 
 
