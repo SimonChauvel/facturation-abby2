@@ -428,30 +428,43 @@ async function processOrder(orderId, env) {
   // ─── PARSING WEBHOOK ──────────────────────────────────────────────────────────
   
   function parseWebhook(payload) {
-    try {
-      const data     = payload.data || {};
-      const orderId  = String(data.order.id);
-      const customer = data.customer;
-  
-      // systeme.io expose le pays dans data.customer.country (code ISO-2)
-      // On s'assure qu'il est bien disponible sur l'objet customer
-      if (!customer.country && data.customer?.billing_address?.country) {
-        customer.country = data.customer.billing_address.country;
-      }
-  
-      const offer      = data.offer_price_plan || data.price_plan || {};
-      const name       = offer.name || "Produit";
-      const amountCents = offer.direct_charge_amount || offer.amount || 0;
-      let unitPrice    = Math.round(amountCents) / 100;
-  
-      const total = data.order?.total_price;
-      if (total !== undefined && total !== null && total === 0) unitPrice = 0.0;
-  
-      return { orderId, customer, item: { name, inner_name: offer.inner_name || "", unit_price_eur: unitPrice } };
-    } catch (e) {
-      log("ERROR", "Erreur parsing webhook :", e.message);
-      return null;
+  try {
+    const data = payload.data || payload || {};
+
+    // Cherche l'order à plusieurs niveaux possibles
+    const order = data.order || data.purchase || data || {};
+    const orderId = String(order.id || order.order_id || Date.now());
+
+    const customer = data.customer || payload.contact || {};
+
+    if (!customer.country && data.customer?.billing_address?.country) {
+      customer.country = data.customer.billing_address.country;
     }
+
+    // Cherche le plan tarifaire à plusieurs niveaux
+    const offer = data.offer_price_plan || data.price_plan || data.product || {};
+    const name = offer.name || order.product_name || "Produit";
+    const amountCents = offer.direct_charge_amount || offer.amount || order.total_price || 0;
+    let unitPrice = Math.round(amountCents) / 100;
+
+    const total = order.total_price;
+    if (total !== undefined && total !== null && total === 0) unitPrice = 0.0;
+
+    log("INFO", `Parsed → orderId=${orderId} | produit=${name} | prix=${unitPrice}€`);
+    return {
+      orderId,
+      customer,
+      item: {
+        name,
+        inner_name: offer.inner_name || "",
+        unit_price_eur: unitPrice,
+      },
+    };
+  } catch (e) {
+    log("ERROR", "Erreur parsing webhook :", e.message);
+    log("ERROR", "Payload complet : " + JSON.stringify(payload));  // ← log complet en cas d'erreur
+    return null;
+  }
 }
 
 // ─── HANDLER PRINCIPAL ────────────────────────────────────────────────────────
@@ -475,6 +488,7 @@ export default {
       log("ERROR", "Payload JSON invalide");
       return new Response("Bad Request", { status: 400 });
     }
+    log("INFO", "Payload reçu : " + JSON.stringify(payload));
 
     const result = parseWebhook(payload);
     if (!result) return new Response("OK");
